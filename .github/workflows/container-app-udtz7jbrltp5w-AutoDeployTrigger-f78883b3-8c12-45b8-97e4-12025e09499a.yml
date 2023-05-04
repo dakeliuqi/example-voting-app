@@ -1,0 +1,63 @@
+name: Trigger auto deployment for container-app-udtz7jbrltp5w
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ main ]
+    paths:
+    - 'result/**'
+    - '.github/workflows/container-app-udtz7jbrltp5w-AutoDeployTrigger-f78883b3-8c12-45b8-97e4-12025e09499a.yml'
+
+  # Allow mannually trigger 
+  workflow_dispatch:      
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Log in to container registry
+        uses: docker/login-action@v1
+        with:
+          registry: containerregistryudtz7jbrltp5w.azurecr.io
+          username: ${{ secrets.CONTAINERAPPUDTZ7JBRLTP5W_REGISTRY_USERNAME }}
+          password: ${{ secrets.CONTAINERAPPUDTZ7JBRLTP5W_REGISTRY_PASSWORD }}
+
+      - name: Build and push container image to registry
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: containerregistryudtz7jbrltp5w.azurecr.io/container-app-udtz7jbrltp5w:${{ github.sha }}
+          file: ./result/Dockerfile
+          context: ./result/
+
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions: 
+      id-token: write #This is required for requesting the OIDC JWT Token
+
+    steps:
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.CONTAINERAPPUDTZ7JBRLTP5W_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.CONTAINERAPPUDTZ7JBRLTP5W_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.CONTAINERAPPUDTZ7JBRLTP5W_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to containerapp
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az config set extension.use_dynamic_install=yes_without_prompt
+            az containerapp registry set -n container-app-udtz7jbrltp5w -g examplevotingappa4b2 --server containerregistryudtz7jbrltp5w.azurecr.io --username  ${{ secrets.CONTAINERAPPUDTZ7JBRLTP5W_REGISTRY_USERNAME }} --password ${{ secrets.CONTAINERAPPUDTZ7JBRLTP5W_REGISTRY_PASSWORD }}
+            az containerapp update -n container-app-udtz7jbrltp5w -g examplevotingappa4b2 --image containerregistryudtz7jbrltp5w.azurecr.io/container-app-udtz7jbrltp5w:${{ github.sha }}
