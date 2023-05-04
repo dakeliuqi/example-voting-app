@@ -1,0 +1,60 @@
+name: Trigger auto deployment for container-app-z3gjud43cdoju
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ main ]
+    paths:
+    - '**'
+    - '.github/workflows/container-app-z3gjud43cdoju-AutoDeployTrigger-1747a980-2783-49b9-9786-00f164d1299b.yml'
+
+  # Allow mannually trigger 
+  workflow_dispatch:      
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Log in to container registry
+        uses: docker/login-action@v1
+        with:
+          registry: containerregistryz3gjud43cdoju.azurecr.io
+          username: ${{ secrets.CONTAINERAPPZ3GJUD43CDOJU_REGISTRY_USERNAME }}
+          password: ${{ secrets.CONTAINERAPPZ3GJUD43CDOJU_REGISTRY_PASSWORD }}
+
+      - name: Build and push container image to registry
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: containerregistryz3gjud43cdoju.azurecr.io/container-app-z3gjud43cdoju:${{ github.sha }}
+          file: ./Dockerfile
+          context: ./
+
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.CONTAINERAPPZ3GJUD43CDOJU_AZURE_CREDENTIALS }}
+
+
+      - name: Deploy to containerapp
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az config set extension.use_dynamic_install=yes_without_prompt
+            az containerapp registry set -n container-app-z3gjud43cdoju -g examplevotingapp9689 --server containerregistryz3gjud43cdoju.azurecr.io --username  ${{ secrets.CONTAINERAPPZ3GJUD43CDOJU_REGISTRY_USERNAME }} --password ${{ secrets.CONTAINERAPPZ3GJUD43CDOJU_REGISTRY_PASSWORD }}
+            az containerapp update -n container-app-z3gjud43cdoju -g examplevotingapp9689 --image containerregistryz3gjud43cdoju.azurecr.io/container-app-z3gjud43cdoju:${{ github.sha }}
