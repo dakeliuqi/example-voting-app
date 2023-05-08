@@ -1,0 +1,45 @@
+name: Trigger auto deployment for container-app-wfumtfx5vr5x4
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ main ]
+    paths:
+    - 'result/**'
+    - '.github/workflows/container-app-wfumtfx5vr5x4-AutoDeployTrigger-777ef329-0cc0-4cce-a5ff-5b9dbe315e84.yml'
+
+  # Allow mannually trigger 
+  workflow_dispatch:      
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions: 
+      id-token: write #This is required for requesting the OIDC JWT Token
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.CONTAINERAPPWFUMTFX5VR5X4_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.CONTAINERAPPWFUMTFX5VR5X4_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.CONTAINERAPPWFUMTFX5VR5X4_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          appSourcePath: ${{ github.workspace }}/result 
+          registryUrl: containerregistrywfumtfx5vr5x4.azurecr.io
+          registryUsername: ${{ secrets.CONTAINERAPPWFUMTFX5VR5X4_REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.CONTAINERAPPWFUMTFX5VR5X4_REGISTRY_PASSWORD }}
+          containerAppName: container-app-wfumtfx5vr5x4
+          resourceGroup: examplevotingappTestingNewApiVersion
+          imageToBuild: containerregistrywfumtfx5vr5x4.azurecr.io/container-app-wfumtfx5vr5x4:${{ github.sha }}
+          dockerfilePath: Dockerfile
+
+
