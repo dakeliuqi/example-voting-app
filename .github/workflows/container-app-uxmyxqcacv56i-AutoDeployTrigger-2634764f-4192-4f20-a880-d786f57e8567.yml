@@ -1,0 +1,45 @@
+name: Trigger auto deployment for container-app-uxmyxqcacv56i
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ main ]
+    paths:
+    - 'result/**'
+    - '.github/workflows/container-app-uxmyxqcacv56i-AutoDeployTrigger-2634764f-4192-4f20-a880-d786f57e8567.yml'
+
+  # Allow mannually trigger 
+  workflow_dispatch:      
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions: 
+      id-token: write #This is required for requesting the OIDC JWT Token
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.CONTAINERAPPUXMYXQCACV56I_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.CONTAINERAPPUXMYXQCACV56I_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.CONTAINERAPPUXMYXQCACV56I_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          appSourcePath: ${{ github.workspace }}/result 
+          registryUrl: containerregistryuxmyxqcacv56i.azurecr.io
+          registryUsername: ${{ secrets.CONTAINERAPPUXMYXQCACV56I_REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.CONTAINERAPPUXMYXQCACV56I_REGISTRY_PASSWORD }}
+          containerAppName: container-app-uxmyxqcacv56i
+          resourceGroup: examplevotingappNewACAE
+          imageToBuild: containerregistryuxmyxqcacv56i.azurecr.io/container-app-uxmyxqcacv56i:${{ github.sha }}
+          dockerfilePath: Dockerfile
+
+
